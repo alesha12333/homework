@@ -1,0 +1,8 @@
+accounting/
+├── main.py
+├── application/
+│   ├── salary.py
+│   └── db/
+│       └── people.py
+├── requirements.txt
+└── README.md 
