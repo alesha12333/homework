@@ -1,0 +1,51 @@
+from pprint import pprint
+import csv
+import re
+
+with open("phonebook_raw.csv", encoding="utf-8") as f:
+    rows = csv.reader(f, delimiter=",")
+    contacts_list = list(rows)
+
+# Обработка
+result = [contacts_list[0]]  # Заголовок
+contacts_dict = {}
+
+for contact in contacts_list[1:]:
+    # 1. Форматирование ФИО
+    full_name = " ".join(contact[:3]).split()
+    lastname = full_name[0] if len(full_name) > 0 else ""
+    firstname = full_name[1] if len(full_name) > 1 else ""
+    surname = full_name[2] if len(full_name) > 2 else ""
+    
+    # 2. Форматирование телефона
+    phone = contact[5] if len(contact) > 5 else ""
+    if phone:
+        pattern = r'(8|\+7|7)?\s*\(?(\d{3})\)?[\s\-]*(\d{3})[\s\-]*(\d{2})[\s\-]*(\d{2})(?:\s*\(?(?:доб\.|доб|доп\.|ext\.?|x)\s*(\d+)\)?)?'
+        match = re.search(pattern, phone, re.IGNORECASE)
+        if match:
+            formatted = f"+7({match.group(2)}){match.group(3)}-{match.group(4)}-{match.group(5)}"
+            if match.group(6):
+                formatted += f" доб.{match.group(6)}"
+            phone = formatted
+    
+    # Создаем нормализованную запись
+    normalized = [lastname, firstname, surname, contact[3], contact[4], phone, contact[6]]
+    
+    # 3. Объединение дублей
+    key = (lastname.lower(), firstname.lower())
+    if key in contacts_dict:
+        for i in range(len(contacts_dict[key])):
+            if not contacts_dict[key][i] and normalized[i]:
+                contacts_dict[key][i] = normalized[i]
+    else:
+        contacts_dict[key] = normalized
+
+result = [contacts_list[0]] + list(contacts_dict.values())
+
+# Сохранение
+with open("phonebook.csv", "w", encoding="utf-8", newline='') as f:
+    datawriter = csv.writer(f, delimiter=',')
+    datawriter.writerows(result)
+
+print("✅ Готово!")
+pprint(result)
