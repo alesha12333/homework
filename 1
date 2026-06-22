@@ -1,0 +1,86 @@
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime
+
+# Определяем список ключевых слов
+KEYWORDS = ['дизайн', 'фото', 'web', 'python']
+URL = 'https://habr.com/ru/all/'
+
+def get_articles():
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    }
+    
+    try:
+        response = requests.get(URL, headers=headers)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Ищем статьи
+        articles = soup.find_all('article')
+        results = []
+        
+        for article in articles:
+            # Заголовок
+            title_tag = article.find('a', class_='tm-title__link')
+            if not title_tag:
+                continue
+                
+            title = title_tag.text.strip()
+            link = 'https://habr.com' + title_tag['href']
+            
+            # Дата
+            time_tag = article.find('time')
+            if time_tag:
+                date = time_tag.get('datetime', time_tag.text.strip())
+                try:
+                    date_obj = datetime.fromisoformat(date.replace('Z', '+00:00'))
+                    date = date_obj.strftime('%Y-%m-%d %H:%M')
+                except:
+                    pass
+            else:
+                date = 'Дата неизвестна'
+            
+            # Превью
+            preview = ''
+            preview_div = article.find('div', class_='article-formatted-body')
+            if preview_div:
+                preview = preview_div.text.strip()
+            
+            # Проверка ключевых слов
+            full_text = f"{title} {preview}".lower()
+            found = []
+            
+            for keyword in KEYWORDS:
+                if keyword.lower() in full_text:
+                    found.append(keyword)
+            
+            if found:
+                results.append({
+                    'date': date,
+                    'title': title,
+                    'link': link,
+                    'keywords': found
+                })
+        
+        return results
+        
+    except Exception as e:
+        print(f"Ошибка: {e}")
+        return []
+
+def main():
+    print("Парсинг статей с Хабра...")
+    print(f"Ключевые слова: {', '.join(KEYWORDS)}\n")
+    
+    articles = get_articles()
+    
+    if articles:
+        for article in articles:
+            print(f"{article['date']} – {article['title']} – {article['link']}")
+            print(f"  Ключевые слова: {', '.join(article['keywords'])}\n")
+    else:
+        print("Статей не найдено или ошибка парсинга.")
+
+if __name__ == "__main__":
+    main()
