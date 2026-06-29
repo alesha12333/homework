@@ -1,0 +1,93 @@
+import os
+from datetime import datetime
+
+
+def logger(path):
+    def __logger(old_function):
+        def new_function(*args, **kwargs):
+            args_str = ', '.join([repr(arg) for arg in args])
+            kwargs_str = ', '.join([f'{k}={repr(v)}' for k, v in kwargs.items()])
+            
+            if args_str and kwargs_str:
+                all_args = f'{args_str}, {kwargs_str}'
+            elif args_str:
+                all_args = args_str
+            elif kwargs_str:
+                all_args = kwargs_str
+            else:
+                all_args = ''
+            
+            
+            result = old_function(*args, **kwargs)
+            
+            
+            with open(path, 'a', encoding='utf-8') as log_file:
+                log_file.write(f'{datetime.now()} - {old_function.__name__}({all_args}) -> {repr(result)}\n')
+            
+            return result
+        
+        return new_function
+    
+    return __logger
+
+
+
+@logger('flat_iterator.log')
+class FlatIterator:
+    def __init__(self, list_of_list):
+        self.list_of_list = list_of_list
+        self.outer_index = 0
+        self.inner_index = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.outer_index >= len(self.list_of_list):
+            raise StopIteration
+        
+        current_list = self.list_of_list[self.outer_index]
+        
+        if self.inner_index >= len(current_list):
+            self.outer_index += 1
+            self.inner_index = 0
+            return self.__next__()
+        
+        item = current_list[self.inner_index]
+        self.inner_index += 1
+        return item
+
+
+# Тестирование
+def test_flat_iterator_with_logger():
+    path = 'flat_iterator.log'
+    if os.path.exists(path):
+        os.remove(path)
+    
+    list_of_lists_1 = [
+        ['a', 'b', 'c'],
+        ['d', 'e', 'f', 'h', False],
+        [1, 2, None]
+    ]
+    
+    
+    iterator = FlatIterator(list_of_lists_1)
+    
+    
+    result = list(iterator)
+    
+    expected = ['a', 'b', 'c', 'd', 'e', 'f', 'h', False, 1, 2, None]
+    assert result == expected, f'Ожидалось {expected}, получено {result}'
+    
+    
+    assert os.path.exists(path), f'Файл {path} должен существовать'
+    
+    
+    with open(path, 'r', encoding='utf-8') as log_file:
+        print('Содержимое лог-файла:')
+        print(log_file.read())
+
+
+if __name__ == '__main__':
+    print("Тестирование FlatIterator с логгером:")
+    test_flat_iterator_with_logger()
